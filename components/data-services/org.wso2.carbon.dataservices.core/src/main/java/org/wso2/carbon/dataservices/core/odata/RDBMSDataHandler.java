@@ -1070,9 +1070,17 @@ public class RDBMSDataHandler implements ODataDataHandler {
             DatabaseMetaData metadata = connection.getMetaData();
             String catalog = connection.getCatalog();
             for (String tableName : this.tableList) {
-                this.tableMetaData.put(tableName, readTableColumnMetaData(tableName, metadata));
-                this.navigationProperties.put(tableName, readForeignKeys(tableName, metadata, catalog));
-                this.primaryKeys.put(tableName, readTablePrimaryKeys(tableName, metadata, catalog));
+                try {
+                    Map<String, DataColumn> columnMetaData = readTableColumnMetaData(tableName, metadata);
+                    NavigationTable foreignKeys = readForeignKeys(tableName, metadata, catalog);
+                    List<String> primaryKeys = readTablePrimaryKeys(tableName, metadata, catalog);
+
+                    this.tableMetaData.put(tableName, columnMetaData);
+                    this.navigationProperties.put(tableName, foreignKeys);
+                    this.primaryKeys.put(tableName, primaryKeys);
+                } catch (ODataServiceFault exc) {
+                    log.warn("Couldn't read metadata for " + tableName + ", skipping", exc);
+                }
             }
         } catch (SQLException e) {
             throw new ODataServiceFault(e, "Error in reading tables from the database. :" + e.getMessage());
